@@ -24,7 +24,7 @@ export function createPausePlayBar(engine) {
     }
   }
 
-  btn.addEventListener('click', function () {
+  function onToggle() {
     engine.togglePaused();
     const p = engine.paused;
     btn.textContent = p ? '▶ Play' : '⏸ Pause';
@@ -34,17 +34,25 @@ export function createPausePlayBar(engine) {
     if (p) {
       updateBadge(engine.getBufferDepth());
     }
-  });
+  }
 
-  engine.onBufferDepthChange(function (depth) {
+  btn.addEventListener('click', onToggle);
+
+  function onBufferDepth(depth) {
     updateBadge(depth);
-  });
+  }
 
-  engine.onFlushStateChange(function (flushing) {
+  function onFlushState(flushing) {
     flushOverlay.classList.toggle('hidden', !flushing);
-  });
+  }
+
+  engine.onBufferDepthChange(onBufferDepth);
+  engine.onFlushStateChange(onFlushState);
 
   const destroy = () => {
+    btn.removeEventListener('click', onToggle);
+    engine.removeListener(onBufferDepth);
+    engine.removeListener(onFlushState);
     flushOverlay.remove();
   };
 

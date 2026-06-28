@@ -21,9 +21,17 @@ export function createKPIDisplay(engine) {
   const robotsEl = document.getElementById('kpi-robots');
   const savingsEl = document.getElementById('kpi-savings');
 
-  engine.onKpiChange(kpis => {
+  function onKpi(kpis) {
     rowsEl.textContent = formatNumber(kpis.totalProcessed);
     robotsEl.textContent = formatNumber(kpis.activeRobots);
     savingsEl.textContent = formatCurrency(kpis.globalSavings);
-  });
+  }
+
+  engine.onKpiChange(onKpi);
+
+  const destroy = () => {
+    engine.removeListener(onKpi);
+  };
+
+  return { destroy };
 }

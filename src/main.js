@@ -12,10 +12,10 @@ import './styles/main.css';
 
 const engine = new StateEngine();
 
-createKPIDisplay(engine);
-createPausePlayBar(engine);
+const kpiDisplay = createKPIDisplay(engine);
+const pausePlayBar = createPausePlayBar(engine);
 const filterPanel = createFilterPanel(engine);
-createSearchBar(engine);
+const searchBar = createSearchBar(engine);
 const snapshotExport = createSnapshotExport(engine);
 const layoutManager = createLayoutManager();
 createGridHeaders(engine);
@@ -24,6 +24,8 @@ const diagnosticPanel = createDiagnosticPanel(engine);
 
 let baselineRows = [];
 let scrollerViewport = null;
+let skeletonHandler = null;
+let baselineScrollHandler = null;
 
 fetch('/automation_projects.csv')
   .then(r => r.text())
@@ -57,11 +59,12 @@ fetch('/automation_projects.csv')
 
     scrollerViewport = scroller.getViewport ? scroller.getViewport() : document.getElementById('grid-viewport');
 
-    engine.onSkeletonChange(function (show) {
+    skeletonHandler = function (show) {
       if (scroller.setSkeleton) scroller.setSkeleton(show);
-    });
+    };
+    engine.onSkeletonChange(skeletonHandler);
 
-    const checkBaselineScroll = () => {
+    baselineScrollHandler = () => {
       if (!engine.isBaselineComplete() && scrollerViewport) {
         const { scrollTop, clientHeight, scrollHeight } = scrollerViewport;
         if (scrollHeight - scrollTop - clientHeight < 200) {
@@ -70,7 +73,7 @@ fetch('/automation_projects.csv')
       }
     };
 
-    scrollerViewport.addEventListener('scroll', checkBaselineScroll, { passive: true });
+    scrollerViewport.addEventListener('scroll', baselineScrollHandler, { passive: true });
 
     if (window.initializeRpaStream) {
       window.initializeRpaStream(
@@ -84,10 +87,18 @@ fetch('/automation_projects.csv')
   });
 
 function onBeforeUnload() {
+  window.stopRpaStream?.();
   engine.destroy();
+  if (skeletonHandler) engine.removeListener(skeletonHandler);
+  if (baselineScrollHandler && scrollerViewport) {
+    scrollerViewport.removeEventListener('scroll', baselineScrollHandler);
+  }
   if (scroller.destroy) scroller.destroy();
   if (diagnosticPanel.destroy) diagnosticPanel.destroy();
   if (filterPanel.destroy) filterPanel.destroy();
+  if (searchBar.destroy) searchBar.destroy();
+  if (kpiDisplay.destroy) kpiDisplay.destroy();
+  if (pausePlayBar.destroy) pausePlayBar.destroy();
   if (snapshotExport.destroy) snapshotExport.destroy();
   if (layoutManager.destroy) layoutManager.destroy();
 }

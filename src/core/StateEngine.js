@@ -17,6 +17,8 @@ export class StateEngine {
     this.searchQuery = '';
 
     this.kpis = { totalProcessed: 0, activeRobots: 0, globalSavings: 0 };
+    this._kpiAccumRobots = 0;
+    this._kpiAccumSavings = 0;
 
     this.listeners = [];
     this.kpiListeners = [];
@@ -91,12 +93,18 @@ export class StateEngine {
 
   setBaseline(rows) {
     this.baselineRows = rows;
+    this._kpiAccumRobots = 0;
+    this._kpiAccumSavings = 0;
     for (const row of rows) {
       const clone = { ...row };
       this.statePool.set(row.project_id, clone);
       this.allRows.push(clone);
+      this._kpiAccumRobots += Number(row.robots_deployed) || 0;
+      this._kpiAccumSavings += Number(row.annual_savings_usd) || 0;
     }
-    this._recomputeKpis();
+    this.kpis.activeRobots = this._kpiAccumRobots;
+    this.kpis.globalSavings = this._kpiAccumSavings;
+    this._notifyKpi();
     this.baselineComplete = true;
     this.progressiveMode = false;
     if (this.streamBuffer.length > 0) {
@@ -143,8 +151,6 @@ export class StateEngine {
 
     this.kpis.totalProcessed += batch.length;
 
-    console.log(`process(${batch.length} rows) | progressiveMode=${this.progressiveMode} | paused=${this.paused}`);
-
     if (this.progressiveMode) {
       this.streamBuffer.push(...batch);
       return;
@@ -162,14 +168,8 @@ export class StateEngine {
   }
 
   _recomputeKpis() {
-    let totalRobots = 0;
-    let totalSavings = 0;
-    for (const row of this.statePool.values()) {
-      totalRobots += Number(row.robots_deployed) || 0;
-      totalSavings += Number(row.annual_savings_usd) || 0;
-    }
-    this.kpis.activeRobots = totalRobots;
-    this.kpis.globalSavings = totalSavings;
+    this.kpis.activeRobots = this._kpiAccumRobots;
+    this.kpis.globalSavings = this._kpiAccumSavings;
     this._notifyKpi();
   }
 
@@ -189,7 +189,6 @@ export class StateEngine {
   }
 
   _ingest(rows) {
-    console.log(`_ingest called with ${rows.length} rows`);
     let newRowsAdded = false;
     const sortActive = this.sortConfig && this.sortConfig.length > 0;
     for (const row of rows) {
@@ -201,6 +200,8 @@ export class StateEngine {
       if (existing) {
         const oldStatus = existing.project_status;
         const oldRoi = Number(existing.roi_percent);
+        const oldRobots = Number(existing.robots_deployed) || 0;
+        const oldSavings = Number(existing.annual_savings_usd) || 0;
 
         let sortKeyChanged = false;
         if (sortActive) {
@@ -215,6 +216,11 @@ export class StateEngine {
         Object.assign(existing, row);
         existing._dirty = true;
 
+        const newRobots = Number(existing.robots_deployed) || 0;
+        const newSavings = Number(existing.annual_savings_usd) || 0;
+        this._kpiAccumRobots += newRobots - oldRobots;
+        this._kpiAccumSavings += newSavings - oldSavings;
+
         if (sortActive && sortKeyChanged) {
           const idx = this.allRows.indexOf(existing);
           if (idx >= 0) {
@@ -225,18 +231,17 @@ export class StateEngine {
 
         if (existing.project_status === 'Failed' && oldStatus !== 'Failed') {
           existing._flashRed = true;
-          console.log(`🔴 Status TRANSITION to Failed: ${existing.project_id} (was ${oldStatus})`);
         }
         if (existing.project_status !== 'Failed' && oldStatus === 'Failed') {
-          console.log(`🟢 Status TRANSITION AWAY from Failed: ${existing.project_id} (now ${existing.project_status})`);
         }
         if (Number(existing.roi_percent) < 0 && oldRoi >= 0) {
           existing._flashAmber = true;
-          console.log(`🟡 ROI NEGATIVE: ${existing.project_id} (${oldRoi} → ${existing.roi_percent})`);
         }
       } else {
         const newRow = { ...row, _dirty: true };
         this.statePool.set(row.project_id, newRow);
+        this._kpiAccumRobots += Number(newRow.robots_deployed) || 0;
+        this._kpiAccumSavings += Number(newRow.annual_savings_usd) || 0;
         if (sortActive) {
           insertSortedRow(this.allRows, newRow, this.sortConfig);
         } else {
@@ -246,7 +251,6 @@ export class StateEngine {
       }
     }
     if (newRowsAdded) this._collectDistinctFromPool();
-    console.log(`_ingest done. statePool=${this.statePool.size}, allRows=${this.allRows.length}`);
   }
 
   _recompute() {

@@ -42,10 +42,22 @@ export function createDiagnosticPanel(engine) {
 
   const closeBtn = panel.querySelector('.dp-close');
   let visible = false;
+  let updateIntervalId = null;
 
   function toggle() {
     visible = !visible;
     panel.classList.toggle('hidden', !visible);
+    if (visible) {
+      update();
+      if (!updateIntervalId) {
+        updateIntervalId = setInterval(update, 500);
+      }
+    } else {
+      if (updateIntervalId) {
+        clearInterval(updateIntervalId);
+        updateIntervalId = null;
+      }
+    }
   }
 
   function onKeydown(e) {
@@ -133,9 +145,13 @@ export function createDiagnosticPanel(engine) {
     fpsEl.className = 'dp-value ' + (fps < 30 ? 'red' : fps < 50 ? 'yellow' : 'green');
   }
 
-  setInterval(update, 500);
+  updateIntervalId = setInterval(update, 500);
 
   const destroy = () => {
+    if (updateIntervalId) {
+      clearInterval(updateIntervalId);
+      updateIntervalId = null;
+    }
     panel.remove();
     diagnosticToggleBtn.remove();
     document.removeEventListener('keydown', onKeydown);

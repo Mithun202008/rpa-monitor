@@ -368,14 +368,13 @@ html, body {
 }
 
 .virtual-content {
-  will-change: transform;
+  contain: layout style paint;
 }
 
 .grid-row {
   display: flex;
   border-bottom: 1px solid #0f1729;
   align-items: center;
-  will-change: transform;
 }
 
 .grid-row:hover {

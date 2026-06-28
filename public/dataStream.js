@@ -1,6 +1,7 @@
 (function() {
   let memoryPool = [];
   let isInitialized = false;
+  let streamIntervalId = null;
 
   const randomRange = (min, max) => Math.random() * (max - min) + min;
 
@@ -8,7 +9,6 @@
   const FLOAT_FIELDS = ['roi_percent', 'market_share_percent'];
 
   const parseCSV = (csvText) => {
-    console.log("⚡ [Pipeline Engine] Parsing Official Hackathon CSV into Memory Pool...");
     const lines = csvText.trim().split('\n');
 
     const headers = lines[0].split('\t').length > lines[0].split(',').length
@@ -42,6 +42,14 @@
     return parsedData;
   };
 
+  window.stopRpaStream = function() {
+    if (streamIntervalId !== null) {
+      clearInterval(streamIntervalId);
+      streamIntervalId = null;
+      isInitialized = false;
+    }
+  };
+
   window.initializeRpaStream = async function(callback, csvUrl = '/rpa_database_2026.csv') {
     if (typeof callback !== 'function') {
       console.error("❌ [Pipeline Error] initializeRpaStream requires a callback function execution loop.");
@@ -49,12 +57,10 @@
     }
 
     if (isInitialized) {
-      console.warn("⚠️ [Pipeline Warning] Telemetry stream has already been initialized.");
       return;
     }
 
     try {
-      console.log(`📦 [Pipeline Engine] Fetching schema baseline from target destination: ${csvUrl}`);
       const response = await fetch(csvUrl);
 
       if (!response.ok) {
@@ -65,17 +71,12 @@
       memoryPool = parseCSV(csvText);
       isInitialized = true;
 
-      console.log(`✅ [Pipeline Engine] Successfully mapped ${memoryPool.length} rows directly into RAM.`);
-      console.log("🚀 [Pipeline Engine] Starting high-frequency 200ms background execution firehose...");
-
-      setInterval(() => {
+      streamIntervalId = setInterval(() => {
         if (memoryPool.length === 0) {
-          console.warn('⚠️ memoryPool is empty, skipping tick');
           return;
         }
 
         const batchSize = Math.floor(randomRange(5, 50));
-        console.log(`📊 dataStream tick: batchSize=${batchSize}, memoryPool=${memoryPool.length}`);
         const incomingBatch = [];
 
         for (let i = 0; i < batchSize; i++) {
@@ -113,7 +114,6 @@
 
     } catch (error) {
       console.error("❌ [Pipeline Critical Crash] Could not initialize telemetry stream:", error);
-      console.error("👉 Fix Checklist: Verify server configuration, absolute path constraints, or check if the asset is missing inside your root public/ directory.");
     }
   };
 })();

@@ -32,14 +32,31 @@ function formatCell(col, row) {
   return String(val);
 }
 
-function highlightText(text, query) {
-  if (!query) return text;
+function updateCellContent(cell, col, formatted, hasSearch, query) {
+  if (!hasSearch) {
+    if (cell._plainText !== formatted) {
+      cell.textContent = formatted;
+      cell._plainText = formatted;
+      cell._highlighted = false;
+    }
+    return;
+  }
+
+  if (cell._plainText === formatted && cell._highlighted) return;
+
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return text;
-  const str = String(text);
-  let result = '';
-  let i = 0;
+  if (tokens.length === 0) {
+    cell.textContent = formatted;
+    cell._plainText = formatted;
+    cell._highlighted = false;
+    return;
+  }
+
+  const str = String(formatted);
   const lower = str.toLowerCase();
+  const fragment = document.createDocumentFragment();
+  let i = 0;
+
   while (i < str.length) {
     let found = -1;
     let matchLen = 0;
@@ -51,17 +68,23 @@ function highlightText(text, query) {
       }
     }
     if (found >= 0 && found === i) {
-      result += '<mark>' + str.slice(i, i + matchLen) + '</mark>';
+      const mark = document.createElement('mark');
+      mark.textContent = str.slice(i, i + matchLen);
+      fragment.appendChild(mark);
       i += matchLen;
     } else if (found >= 0) {
-      result += str.slice(i, found);
+      fragment.appendChild(document.createTextNode(str.slice(i, found)));
       i = found;
     } else {
-      result += str.slice(i);
+      fragment.appendChild(document.createTextNode(str.slice(i)));
       break;
     }
   }
-  return result;
+
+  cell.textContent = '';
+  cell.appendChild(fragment);
+  cell._plainText = formatted;
+  cell._highlighted = true;
 }
 
 function updateHeaderIndicators(el, cfg, columns) {
@@ -154,22 +177,26 @@ export function createVirtualScroller(engine) {
   let currentSearchQuery = '';
   let showSkeleton = false;
 
+  let livePillClickHandler = null;
+  let liveStateHandler = null;
+
   function getVisibleCount() {
     return Math.ceil(viewport.clientHeight / ROW_HEIGHT) + BUFFER_ROWS * 2;
   }
 
   function render() {
     rafPending = false;
+
     const scrollTop = viewport.scrollTop;
     const visCount = getVisibleCount();
     const totalHeight = dataRows.length * ROW_HEIGHT;
+
     spacer.style.height = totalHeight + 'px';
     if (rowNodes.length !== visCount) {
       rebuildPool(visCount);
     }
 
     const startIdx = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_ROWS);
-    const endIdx = Math.min(dataRows.length, startIdx + visCount);
     const hasSearch = currentSearchQuery.length > 0;
 
     for (let i = 0; i < rowNodes.length; i++) {
@@ -187,11 +214,8 @@ export function createVirtualScroller(engine) {
           const cells = rowEl.children;
           for (let c = 0; c < COLUMNS.length; c++) {
             const col = COLUMNS[c];
-            let formatted = formatCell(col, row);
-            if (hasSearch) {
-              formatted = highlightText(formatted, currentSearchQuery);
-            }
-            cells[c].innerHTML = formatted;
+            const formatted = formatCell(col, row);
+            updateCellContent(cells[c], col, formatted, hasSearch, currentSearchQuery);
           }
           applyAlertClass(rowEl, row);
           row._dirty = false;
@@ -203,7 +227,9 @@ export function createVirtualScroller(engine) {
         rowEl.className = 'grid-row skeleton-row';
         const cells = rowEl.children;
         for (let c = 0; c < COLUMNS.length; c++) {
-          cells[c].innerHTML = '';
+          cells[c].textContent = '';
+          cells[c]._plainText = '';
+          cells[c]._highlighted = false;
         }
         rowEl._lastDataIdx = -1;
       } else {
@@ -232,6 +258,8 @@ export function createVirtualScroller(engine) {
         cell.style.width = col.width + 'px';
         cell.style.textAlign = col.align || 'left';
         cell.dataset.key = col.key;
+        cell._plainText = '';
+        cell._highlighted = false;
         rowEl.appendChild(cell);
       });
       content.appendChild(rowEl);
@@ -292,21 +320,30 @@ export function createVirtualScroller(engine) {
   livePill.setAttribute('aria-label', 'Return to live view');
   document.body.appendChild(livePill);
 
-  livePill.addEventListener('click', function () {
+  livePillClickHandler = function () {
     viewport.scrollTop = 0;
     engine.setScrollAway(false);
-  });
+  };
+  livePill.addEventListener('click', livePillClickHandler);
 
-  engine.onLiveStateChange(function (state) {
+  liveStateHandler = function (state) {
     if (state.isScrolledAway && state.pendingNewRowCount > 0) {
       livePill.textContent = `↑ ${state.pendingNewRowCount} new rows — Click to return live`;
       livePill.classList.remove('hidden');
     } else {
       livePill.classList.add('hidden');
     }
-  });
+  };
+  engine.onLiveStateChange(liveStateHandler);
 
   const destroy = () => {
+    viewport.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+    if (livePillClickHandler) {
+      livePill.removeEventListener('click', livePillClickHandler);
+    }
+    engine.removeListener(onRowsChange);
+    engine.removeListener(liveStateHandler);
     livePill.remove();
   };
 
