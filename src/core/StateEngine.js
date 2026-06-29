@@ -93,24 +93,42 @@ export class StateEngine {
 
   setBaseline(rows) {
     this.baselineRows = rows;
-    this._kpiAccumRobots = 0;
-    this._kpiAccumSavings = 0;
-    for (const row of rows) {
-      const clone = { ...row };
-      this.statePool.set(row.project_id, clone);
-      this.allRows.push(clone);
-      this._kpiAccumRobots += Number(row.robots_deployed) || 0;
-      this._kpiAccumSavings += Number(row.annual_savings_usd) || 0;
-    }
-    this.kpis.activeRobots = this._kpiAccumRobots;
-    this.kpis.globalSavings = this._kpiAccumSavings;
-    this._notifyKpi();
+    this._ingest(rows);
     this.baselineComplete = true;
     this.progressiveMode = false;
     if (this.streamBuffer.length > 0) {
       this._ingest(this.streamBuffer);
       this.streamBuffer = [];
     }
+    this._notifySkeleton(false);
+    this._notifyKpi();
+    this._recompute();
+  }
+
+  loadBaselineChunk(rows) {
+    if (!rows || rows.length === 0) return;
+    for (const raw of rows) {
+      const row = { ...raw };
+      this.statePool.set(row.project_id, row);
+      this.allRows.push(row);
+      this._kpiAccumRobots += Number(row.robots_deployed) || 0;
+      this._kpiAccumSavings += Number(row.annual_savings_usd) || 0;
+    }
+  }
+
+  finalizeBaseline(distinctValues) {
+    this.kpis.activeRobots = this._kpiAccumRobots;
+    this.kpis.globalSavings = this._kpiAccumSavings;
+    this.baselineComplete = true;
+    this.progressiveMode = false;
+    if (distinctValues) {
+      this.setDistinctValues(distinctValues);
+    }
+    if (this.streamBuffer.length > 0) {
+      this._ingest(this.streamBuffer);
+      this.streamBuffer = [];
+    }
+    this._notifyKpi();
     this._notifySkeleton(false);
     this._recompute();
   }

@@ -28,8 +28,41 @@
       }
     })();
   </script>
+  <style>
+    .loading-skeleton {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      padding: 8px 12px; gap: 6px;
+      background: #0b1120;
+    }
+    .loading-skeleton .sk-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; min-height: 70px; }
+    .loading-skeleton .sk-kpi > div { background: #131c31; border: 1px solid #1e2a45; border-radius: 6px; padding: 10px 16px; }
+    .loading-skeleton .sk-bar { display: flex; gap: 8px; align-items: center; padding: 6px 0; min-height: 42px; }
+    .loading-skeleton .sk-bar > div:first-child { width: 340px; height: 28px; background: #131c31; border: 1px solid #1e2a45; border-radius: 4px; }
+    .loading-skeleton .sk-bar > div:nth-child(2) { width: 80px; height: 28px; background: #131c31; border: 1px solid #1e2a45; border-radius: 4px; }
+    .loading-skeleton .sk-grid { flex: 1; border: 1px solid #1e2a45; border-radius: 6px; overflow: hidden; background: #0b1120; }
+    .loading-skeleton .sk-grid .sk-row { display: flex; height: 36px; border-bottom: 1px solid #0f1729; }
+    .loading-skeleton .sk-grid .sk-row > div {
+      background: linear-gradient(90deg, #131c31 25%, #1e2a45 50%, #131c31 75%);
+      background-size: 400px 100%; height: 100%; flex: 1; margin-right: 2px;
+      animation: sk-shimmer 1.5s ease-in-out infinite;
+    }
+    .loading-skeleton .sk-grid .sk-row > div:last-child { margin-right: 0; }
+    @keyframes sk-shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+  </style>
 </head>
 <body>
+  <div id="loading-skeleton" class="loading-skeleton" aria-label="Loading">
+    <div class="sk-kpi"><div></div><div></div><div></div></div>
+    <div class="sk-bar"><div></div><div></div></div>
+    <div class="sk-grid">
+      <div class="sk-row"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="sk-row"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="sk-row"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="sk-row"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="sk-row"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+    </div>
+  </div>
   <div id="app">
     <div id="kpi-dashboard">
       <div class="kpi-card">

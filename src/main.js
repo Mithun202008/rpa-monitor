@@ -8,7 +8,11 @@ import { createLayoutManager } from './components/LayoutManager.js';
 import { createGridHeaders, createVirtualScroller } from './components/VirtualScroller.js';
 import { createDiagnosticPanel } from './components/DiagnosticPanel.js';
 import { createSnapshotExport } from './core/SnapshotExport.js';
+import CsvWorker from './workers/csvWorker.js?worker';
 import './styles/main.css';
+
+const skeletonEl = document.getElementById('loading-skeleton');
+if (skeletonEl) skeletonEl.remove();
 
 const engine = new StateEngine();
 
@@ -22,40 +26,23 @@ createGridHeaders(engine);
 const scroller = createVirtualScroller(engine);
 const diagnosticPanel = createDiagnosticPanel(engine);
 
-let baselineRows = [];
 let scrollerViewport = null;
 let skeletonHandler = null;
 let baselineScrollHandler = null;
 
-fetch('/automation_projects.csv')
-  .then(r => r.text())
-  .then(csvText => {
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    const distinct = { automation_type: new Set(), department: new Set(), industry: new Set() };
-    const rows = [];
+const worker = new CsvWorker();
+worker.postMessage({ type: 'load-csv', url: '/automation_projects.csv' });
 
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      const vals = lines[i].split(',');
-      if (vals.length < headers.length) continue;
-      const row = {};
-      headers.forEach((h, idx) => { row[h] = vals[idx]?.trim(); });
-      if (row.automation_type) distinct.automation_type.add(row.automation_type);
-      if (row.department) distinct.department.add(row.department);
-      if (row.industry) distinct.industry.add(row.industry);
-      rows.push(row);
-    }
+worker.onmessage = function (e) {
+  const msg = e.data;
 
-    baselineRows = rows;
+  if (msg.type === 'baseline-chunk') {
+    engine.loadBaselineChunk(msg.rows);
+    return;
+  }
 
-    engine.setDistinctValues({
-      automation_type: [...distinct.automation_type].sort(),
-      department: [...distinct.department].sort(),
-      industry: [...distinct.industry].sort(),
-    });
-
-    engine.setBaseline(baselineRows);
+  if (msg.type === 'baseline-complete') {
+    engine.finalizeBaseline(msg.distinctValues);
 
     scrollerViewport = scroller.getViewport ? scroller.getViewport() : document.getElementById('grid-viewport');
 
@@ -81,10 +68,15 @@ fetch('/automation_projects.csv')
         '/automation_projects.csv'
       );
     }
-  })
-  .catch(err => {
-    console.error('Failed to load CSV:', err);
-  });
+
+    worker.terminate();
+    return;
+  }
+
+  if (msg.type === 'error') {
+    console.error('CSV Worker error:', msg.message);
+  }
+};
 
 function onBeforeUnload() {
   window.stopRpaStream?.();
