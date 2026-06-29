@@ -1,11 +1,4 @@
 export function createPausePlayBar(engine) {
-  const container = document.getElementById('pause-play');
-  container.innerHTML = `
-    <button id="btn-pause-play" class="pp-btn">⏸ Pause</button>
-    <span id="pp-status" class="pp-status live">Live</span>
-    <span id="buffer-badge" class="buffer-badge hidden"></span>
-  `;
-
   const btn = document.getElementById('btn-pause-play');
   const status = document.getElementById('pp-status');
   const badge = document.getElementById('buffer-badge');

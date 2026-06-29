@@ -104,7 +104,10 @@ function updateHeaderIndicators(el, cfg, columns) {
 }
 
 export function createGridHeaders(engine) {
-  const el = document.getElementById('grid-header');
+  const headerRow = document.querySelector('.grid-header-row');
+  if (headerRow) {
+    headerRow.style.width = '1750px';
+  }
 
   function handleHeaderClick(e, col) {
     let cfg = engine.sortConfig;
@@ -124,52 +127,39 @@ export function createGridHeaders(engine) {
       cfg.push({ field: col.key, dir: 'asc' });
     }
     engine.setSortConfig(cfg);
-    updateHeaderIndicators(el, cfg, COLUMNS);
+    updateHeaderIndicators(document.getElementById('grid-header'), cfg, COLUMNS);
   }
 
-  const headerRow = document.createElement('div');
-  headerRow.className = 'grid-header-row';
-
-  COLUMNS.forEach(col => {
-    const cell = document.createElement('div');
-    cell.className = 'grid-header-cell' + (col.sortable ? ' sortable' : '');
-    cell.style.width = col.width + 'px';
-    cell.style.textAlign = col.align || 'left';
-    cell.textContent = col.label;
-
-    if (col.sortable) {
-      const indicator = document.createElement('span');
-      indicator.className = 'sort-indicator';
-      indicator.textContent = ' ';
-      cell.appendChild(indicator);
-
+  document.querySelectorAll('.grid-header-cell[data-key]').forEach(cell => {
+    const key = cell.dataset.key;
+    const col = COLUMNS.find(c => c.key === key);
+    if (col && col.sortable) {
       cell.addEventListener('click', function (e) { handleHeaderClick(e, col); });
     }
-    headerRow.appendChild(cell);
   });
-
-  el.appendChild(headerRow);
 }
 
 export function createVirtualScroller(engine) {
   const viewport = document.getElementById('grid-viewport');
-  viewport.style.position = 'relative';
-  viewport.style.overflowY = 'auto';
-  viewport.style.overflowX = 'auto';
 
   const totalWidth = COLUMNS.reduce((s, c) => s + c.width, 0);
-  viewport.style.minWidth = totalWidth + 'px';
-
-  const content = document.createElement('div');
-  content.className = 'virtual-content';
-  content.style.position = 'relative';
-  content.style.width = totalWidth + 'px';
-  viewport.appendChild(content);
+  const content = viewport.querySelector('.virtual-content') || (() => {
+    const el = document.createElement('div');
+    el.className = 'virtual-content';
+    el.style.position = 'relative';
+    el.style.width = totalWidth + 'px';
+    viewport.appendChild(el);
+    return el;
+  })();
 
   const spacer = document.createElement('div');
   spacer.style.height = '0px';
   spacer.style.pointerEvents = 'none';
   content.appendChild(spacer);
+
+  // Cached layout dimensions to avoid forced synchronous layout reads
+  let cachedScrollTop = viewport.scrollTop;
+  let cachedClientHeight = viewport.clientHeight;
 
   let dataRows = [];
   let rowNodes = [];
@@ -181,13 +171,14 @@ export function createVirtualScroller(engine) {
   let liveStateHandler = null;
 
   function getVisibleCount() {
-    return Math.ceil(viewport.clientHeight / ROW_HEIGHT) + BUFFER_ROWS * 2;
+    return Math.ceil(cachedClientHeight / ROW_HEIGHT) + BUFFER_ROWS * 2;
   }
 
   function render() {
     rafPending = false;
 
-    const scrollTop = viewport.scrollTop;
+    // Zero DOM reads inside the layout loop
+    const scrollTop = cachedScrollTop;
     const visCount = getVisibleCount();
     const totalHeight = dataRows.length * ROW_HEIGHT;
 
@@ -204,7 +195,7 @@ export function createVirtualScroller(engine) {
       const rowEl = rowNodes[i];
       if (dataIdx < dataRows.length) {
         const row = dataRows[dataIdx];
-        rowEl.style.top = (dataIdx * ROW_HEIGHT) + 'px';
+        rowEl.style.transform = `translateY(${dataIdx * ROW_HEIGHT}px)`;
         rowEl.style.display = 'flex';
 
         const needsContentUpdate = row._dirty || rowEl._lastDataIdx !== dataIdx || hasSearch;
@@ -222,7 +213,7 @@ export function createVirtualScroller(engine) {
           rowEl._lastDataIdx = dataIdx;
         }
       } else if (showSkeleton) {
-        rowEl.style.top = (dataIdx * ROW_HEIGHT) + 'px';
+        rowEl.style.transform = `translateY(${dataIdx * ROW_HEIGHT}px)`;
         rowEl.style.display = 'flex';
         rowEl.className = 'grid-row skeleton-row';
         const cells = rowEl.children;
@@ -251,6 +242,7 @@ export function createVirtualScroller(engine) {
       rowEl.style.position = 'absolute';
       rowEl.style.left = '0';
       rowEl.style.right = '0';
+      rowEl.style.top = '0';
       rowEl.style.display = 'flex';
       COLUMNS.forEach(col => {
         const cell = document.createElement('div');
@@ -275,8 +267,15 @@ export function createVirtualScroller(engine) {
   }
 
   function onScroll() {
-    const scrollTop = viewport.scrollTop;
-    if (scrollTop <= ROW_HEIGHT) {
+    cachedScrollTop = viewport.scrollTop;
+    const scrollLeft = viewport.scrollLeft;
+
+    const headerRow = document.querySelector('.grid-header-row');
+    if (headerRow) {
+      headerRow.style.transform = `translateX(-${scrollLeft}px)`;
+    }
+
+    if (cachedScrollTop <= ROW_HEIGHT) {
       engine.setScrollAway(false);
     } else {
       engine.setScrollAway(true);
@@ -287,23 +286,15 @@ export function createVirtualScroller(engine) {
   viewport.addEventListener('scroll', onScroll, { passive: true });
 
   function onRowsChange(rows) {
-    const prevLen = dataRows.length;
     dataRows = rows;
     currentSearchQuery = engine.searchQuery || '';
-
-    if (engine.isUserScrolledAway && !(engine.sortConfig && engine.sortConfig.length > 0)) {
-      const added = rows.length - prevLen;
-      if (added > 0) {
-        viewport.scrollTop += added * ROW_HEIGHT;
-      }
-    }
-
     scheduleRender();
   }
 
   engine.onRowsChange(onRowsChange);
 
   function onResize() {
+    cachedClientHeight = viewport.clientHeight;
     const count = getVisibleCount();
     if (rowNodes.length !== count) {
       rebuildPool(count);

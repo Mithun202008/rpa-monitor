@@ -307,13 +307,13 @@ export class StateEngine {
         processed += batch.length;
       }
       this._notifyBufferDepth();
+      this._recomputeKpis();
+      this._recompute();
       if (this.bufferQueue.length > 0) {
         this._flushRafId = requestAnimationFrame(flushTick);
       } else {
         this._flushRafId = null;
         this._notifyFlushState(false);
-        this._recomputeKpis();
-        this._recompute();
       }
     };
     this._flushRafId = requestAnimationFrame(flushTick);

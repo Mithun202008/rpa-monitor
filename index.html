@@ -5,20 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <title>RPA Control Terminal — Phase 2 Enhanced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="/src/styles/main.css" />
+  <script>
+    (function() {
+      try {
+        const STORAGE_KEY = 'rpa_monitor_layout_v1';
+        const state = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (state) {
+          const docEl = document.documentElement;
+          Object.keys(state).forEach(id => {
+            if (!state[id]) {
+              docEl.classList.add(`panel-${id}-hidden`);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to pre-apply layout states:', e);
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="app">
-    <div id="kpi-dashboard"></div>
+    <div id="kpi-dashboard">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Streamed Rows Processed</span>
+        <span class="kpi-value" id="kpi-rows">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Active Robots Deployed</span>
+        <span class="kpi-value" id="kpi-robots">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Global Cumulative Savings</span>
+        <span class="kpi-value" id="kpi-savings">$0.00</span>
+      </div>
+    </div>
     <div id="toolbar">
-      <div id="search-bar"></div>
-      <div id="filter-panel"></div>
-      <div id="pause-play"></div>
-      <div id="layout-toggles"></div>
+      <div id="search-bar">
+        <input type="text" id="search-input" class="search-input" placeholder="Fuzzy search: project_name, company_id, partner, country..." />
+      </div>
+      <div id="filter-panel">
+        <div class="filter-row" id="filter-row"></div>
+        <div class="filter-chips" id="filter-chips"></div>
+      </div>
+      <div id="pause-play">
+        <button id="btn-pause-play" class="pp-btn">⏸ Pause</button>
+        <span id="pp-status" class="pp-status live">Live</span>
+        <span id="buffer-badge" class="buffer-badge hidden"></span>
+      </div>
+      <div id="layout-toggles">
+        <div class="layout-toggle-group">
+          <button class="layout-toggle-btn" id="layout-settings-toggle">⚙ Panels</button>
+          <div class="layout-toggle-menu hidden" id="layout-toggle-menu">
+            <label class="layout-toggle">
+              <input type="checkbox" data-panel="kpi-dashboard" checked />
+              KPI Strip
+            </label>
+            <label class="layout-toggle">
+              <input type="checkbox" data-panel="filter-panel" checked />
+              Filter Bar
+            </label>
+            <label class="layout-toggle">
+              <input type="checkbox" data-panel="grid-container" checked />
+              Grid Window
+            </label>
+            <label class="layout-toggle">
+              <input type="checkbox" data-panel="search-bar" checked />
+              Search
+            </label>
+            <label class="layout-toggle">
+              <input type="checkbox" data-panel="pause-play" checked />
+              Pause/Play
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="grid-container">
-      <div id="grid-header"></div>
-      <div id="grid-viewport"></div>
+      <div id="grid-header">
+        <div class="grid-header-row">
+          <div class="grid-header-cell" style="width:100px;text-align:left" data-key="project_id">ID</div>
+          <div class="grid-header-cell" style="width:100px;text-align:left" data-key="company_id">Company</div>
+          <div class="grid-header-cell" style="width:200px;text-align:left" data-key="project_name">Project Name</div>
+          <div class="grid-header-cell" style="width:100px;text-align:left" data-key="project_status">Status</div>
+          <div class="grid-header-cell" style="width:150px;text-align:left" data-key="automation_type">Automation Type</div>
+          <div class="grid-header-cell" style="width:80px;text-align:right" data-key="robots_deployed">Robots</div>
+          <div class="grid-header-cell sortable" style="width:120px;text-align:right" data-key="budget_usd">Budget<span class="sort-indicator"> </span></div>
+          <div class="grid-header-cell" style="width:120px;text-align:right" data-key="annual_savings_usd">Savings</div>
+          <div class="grid-header-cell sortable" style="width:90px;text-align:right" data-key="roi_percent">ROI %<span class="sort-indicator"> </span></div>
+          <div class="grid-header-cell sortable" style="width:120px;text-align:right" data-key="employee_hours_saved">Hours Saved<span class="sort-indicator"> </span></div>
+          <div class="grid-header-cell" style="width:150px;text-align:left" data-key="department">Department</div>
+          <div class="grid-header-cell" style="width:150px;text-align:left" data-key="industry">Industry</div>
+          <div class="grid-header-cell" style="width:150px;text-align:left" data-key="implementation_partner">Partner</div>
+          <div class="grid-header-cell" style="width:120px;text-align:left" data-key="country">Country</div>
+        </div>
+      </div>
+      <div id="grid-viewport" style="width:100%;height:100%">
+      <div class="virtual-content" style="position:relative;width:1750px"></div>
+    </div>
     </div>
   </div>
   <script src="/dataStream.js"></script>

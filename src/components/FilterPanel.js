@@ -1,8 +1,6 @@
 const FILTER_FIELDS = ['automation_type', 'department', 'industry'];
 
 export function createFilterPanel(engine) {
-  const el = document.getElementById('filter-panel');
-  el.innerHTML = `<div class="filter-row" id="filter-row"></div><div class="filter-chips" id="filter-chips"></div>`;
   const row = document.getElementById('filter-row');
   const chipsContainer = document.getElementById('filter-chips');
 

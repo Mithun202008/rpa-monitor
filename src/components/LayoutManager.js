@@ -8,8 +8,6 @@ const PANELS = [
 ];
 
 export function createLayoutManager() {
-  const el = document.getElementById('layout-toggles');
-
   let state;
   try {
     state = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -25,25 +23,24 @@ export function createLayoutManager() {
   }
 
   function apply() {
+    const docEl = document.documentElement;
     PANELS.forEach(p => {
       const panelEl = document.getElementById(p.id);
       if (panelEl) {
         panelEl.style.display = state[p.id] ? '' : 'none';
       }
+      
+      // Update HTML class so that CSS matches the state
+      if (state[p.id]) {
+        docEl.classList.remove(`panel-${p.id}-hidden`);
+      } else {
+        docEl.classList.add(`panel-${p.id}-hidden`);
+      }
+
+      const cb = document.querySelector(`.layout-toggle input[data-panel="${p.id}"]`);
+      if (cb) cb.checked = state[p.id];
     });
   }
-
-  el.innerHTML = `<div class="layout-toggle-group">
-    <button class="layout-toggle-btn" id="layout-settings-toggle">⚙ Panels</button>
-    <div class="layout-toggle-menu hidden" id="layout-toggle-menu">
-      ${PANELS.map(p => `
-        <label class="layout-toggle">
-          <input type="checkbox" data-panel="${p.id}" ${state[p.id] ? 'checked' : ''} />
-          ${p.label}
-        </label>
-      `).join('')}
-    </div>
-  </div>`;
 
   const toggleBtn = document.getElementById('layout-settings-toggle');
   const menu = document.getElementById('layout-toggle-menu');
