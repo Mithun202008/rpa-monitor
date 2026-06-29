@@ -518,6 +518,21 @@ html.panel-pause-play-hidden #pause-play { display: none; }
   visibility: hidden;
 }
 
+/* ── Version Badge ── */
+.version-badge {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #475569;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 40;
+  user-select: none;
+}
+
 /* ── Live Pill ── */
 .live-pill {
   position: fixed;
