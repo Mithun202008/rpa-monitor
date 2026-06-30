@@ -71,7 +71,7 @@ export function createDiagnosticPanel(engine) {
 
   const diagnosticToggleBtn = document.createElement('button');
   diagnosticToggleBtn.className = 'dp-toggle-btn';
-  diagnosticToggleBtn.textContent = '🔍';
+  diagnosticToggleBtn.textContent = '🚀';
   diagnosticToggleBtn.setAttribute('title', 'Toggle Diagnostic Panel (Ctrl+Shift+D)');
   document.body.appendChild(diagnosticToggleBtn);
 
