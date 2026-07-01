@@ -654,6 +654,19 @@ html.panel-pause-play-hidden #pause-play { display: none; }
 .dp-bar.yellow { background: #fbbf24; }
 .dp-bar.red { background: #ef4444; }
 
+/* ── Version Badge ── */
+.version-badge {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  font-size: 11px;
+  color: #475569;
+  font-family: 'Inter', sans-serif;
+  user-select: none;
+  pointer-events: none;
+  z-index: 40;
+}
+
 .dp-toggle-btn {
   position: fixed;
   bottom: 24px;

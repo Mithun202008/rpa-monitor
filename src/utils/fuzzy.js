@@ -1,4 +1,4 @@
-const SEARCH_FIELDS = ['project_name', 'company_id', 'implementation_partner', 'country'];
+const SEARCH_FIELDS = ['project_id', 'project_name', 'company_id', 'implementation_partner', 'country'];
 
 export function fuzzyFilter(rows, query) {
   if (!query || query.trim() === '') return rows;
